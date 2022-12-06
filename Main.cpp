@@ -20,7 +20,7 @@ uintptr_t _fowmodeaddr;
 std::vector<unsigned int> bases;
 std::vector<unsigned int> offsets;
 
-// FOW toggles
+// FOV toggles
 int _fowMode = 0;
 int _fowVal = 1;
 
@@ -218,14 +218,14 @@ int main()
 	DWORD pid = 0;
 
 	// Find the Process ID
-	// RelicCardinal_ws.exe for Xbox pass version, RelicCardinal_ws.exe for Steam version
+	// RelicCardinal_ws.exe for Xbox pass version, RelicCardinal.exe for Steam version
 	if (ms)
 	{
 		pid = GetPID((PWCHAR)L"RelicCardinal_ws.exe");
 	}
 	else
 	{
-		pid = GetPID((PWCHAR)L"RelicCardinal_ws.exe");
+		pid = GetPID((PWCHAR)L"RelicCardinal.exe");
 	}
 	if (pid != 0)
 	{
