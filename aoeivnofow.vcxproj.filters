@@ -19,4 +19,14 @@
       <Filter>Archivos de recursos</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="data.json">
+      <Filter>Archivos de recursos</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="json.hpp">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>
