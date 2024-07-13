@@ -7,6 +7,7 @@
 #include "json.hpp"
 
 using json = nlohmann::json;
+json j;
 
 // Win API
 HANDLE hProcess;
@@ -22,11 +23,10 @@ int toggleKey = 0x50; // P Key
 int exitKey = VK_END; // End Key
 bool customKeys = false;
 
-std::vector<unsigned int> offsets;
-
 uintptr_t fowAddr = NULL;
 uintptr_t mpBoolAddr = NULL;
 uintptr_t patchAddr = NULL;
+uintptr_t isInGameAddr = NULL;
 int fowMode = 0;
 int fowVal = 0;
 
@@ -106,6 +106,15 @@ unsigned int hexToUint(const std::string& hexStr) {
 	return result;
 }
 
+void loadMpBool()
+{
+	unsigned int mpboolbase = hexToUint(j["mpboolbase"]);
+	unsigned int mpboolo1 = hexToUint(j["mpboolo1"]);
+	unsigned int mpboolo2 = hexToUint(j["mpboolo2"]);
+	unsigned int mpboolo3 = hexToUint(j["mpboolo3"]);
+	mpBoolAddr = ResolveAddrEx(hProcess, moduleBase + mpboolbase, { mpboolo1, mpboolo2, mpboolo3 });;
+}
+
 bool loadAddresses()
 {
 	std::ifstream input_file("data.json");
@@ -114,16 +123,15 @@ bool loadAddresses()
 		return false;
 	}
 
-	json j;
 	input_file >> j;
 
 	std::string gameversion = j["gameversion"];
 	unsigned int patchaddress = hexToUint(j["patchaddress"]);
 	unsigned int fowbase = hexToUint(j["fowaddr"]);
-	unsigned int mpboolbase = hexToUint(j["mpboolbase"]);
-	unsigned int mpboolo1 = hexToUint(j["mpboolo1"]);
-	unsigned int mpboolo2 = hexToUint(j["mpboolo2"]);
-	unsigned int mpboolo3 = hexToUint(j["mpboolo3"]);
+
+	unsigned int isingamebase = hexToUint(j["isingamebase"]);
+	unsigned int isingameo1 = hexToUint(j["isingameo1"]);
+	unsigned int isingameo2 = hexToUint(j["isingameo2"]);
 	int cToggleKey = hexToUint(j["togglekey"]);
 	int cExitKey = hexToUint(j["exitkey"]);
 
@@ -134,9 +142,10 @@ bool loadAddresses()
 	if (cToggleKey != 0 || cExitKey != 0)
 		customKeys = true;
 
-	mpBoolAddr = ResolveAddrEx(hProcess, moduleBase + mpboolbase, { mpboolo1, mpboolo2, mpboolo3 });
+	loadMpBool();
 	fowAddr = ResolveAddrEx(hProcess, moduleBase + fowbase, { });
 	patchAddr = ResolveAddrEx(hProcess, moduleBase + patchaddress, { });
+	isInGameAddr = ResolveAddrEx(hProcess, moduleBase + isingamebase, { isingameo1, isingameo2 });
 
 	SetConsoleTextAttribute(hConsole, 15);
 	std::cout << "MpBool Address: " << std::hex << mpBoolAddr << std::endl;
@@ -159,19 +168,42 @@ bool loadAddresses()
 
 	return true;
 }
-void toggleOn()
+
+bool isInGame()
 {
+	int inGameValue = 0;
+	ReadProcessMemory(hProcess, (int*)isInGameAddr, &inGameValue, sizeof(inGameValue), NULL);
+	return inGameValue == 1;
+}
+
+bool checkInGame()
+{
+	if (!isInGame())
+	{
+		SetConsoleTextAttribute(hConsole, 12);
+		std::cout << "You are NOT in a game!" << std::endl;
+		return false;
+	}
+	return true;
+}
+
+bool toggleOn()
+{
+	if (!checkInGame()) return false;
 	active = true;
+	loadMpBool();
 	ReadProcessMemory(hProcess, (int*)fowAddr, &fowVal, sizeof(fowVal), NULL);
 	ReadProcessMemory(hProcess, (int*)mpBoolAddr, &fowMode, sizeof(fowMode), NULL);
 	fowVal += 1;
 	fowMode += 1;
 	WriteProcessMemory(hProcess, (int*)fowAddr, &fowVal, sizeof(fowVal), NULL);
 	WriteProcessMemory(hProcess, (int*)mpBoolAddr, &fowMode, sizeof(fowMode), NULL);
+	return true;
 }
 
-void toggleOff()
+bool toggleOff()
 {
+	if (!checkInGame()) return false;
 	active = false;
 	ReadProcessMemory(hProcess, (int*)fowAddr, &fowVal, sizeof(fowVal), NULL);
 	ReadProcessMemory(hProcess, (int*)mpBoolAddr, &fowMode, sizeof(fowMode), NULL);
@@ -179,10 +211,12 @@ void toggleOff()
 	fowMode -= 1;
 	WriteProcessMemory(hProcess, (int*)fowAddr, &fowVal, sizeof(fowVal), NULL);
 	WriteProcessMemory(hProcess, (int*)mpBoolAddr, &fowMode, sizeof(fowMode), NULL);
+	return true;
 }
 void input()
 {
 	run = true;
+	int tickCounter = 0;
 
 	while (run)
 	{
@@ -200,20 +234,35 @@ void input()
 		{
 
 			if (!active) {
-				toggleOn();
+				if (!toggleOn()) continue;
 
 				SetConsoleTextAttribute(hConsole, 15);
 				std::cout << "Anti FoW ";
 				SetConsoleTextAttribute(hConsole, 10);
 				std::cout << "ON." << std::endl;
+				tickCounter = 0;
 			}
 			else {
-				toggleOff();
+				if (!toggleOff()) continue;
 
 				SetConsoleTextAttribute(hConsole, 15);
 				std::cout << "Anti FoW ";
 				SetConsoleTextAttribute(hConsole, 12);
 				std::cout << "OFF." << std::endl;
+			}
+		}
+		if (active)
+		{
+			tickCounter++;
+			if (tickCounter > 100)
+			{
+				tickCounter = 0;
+				if (!isInGame())
+				{
+					active = false;
+					SetConsoleTextAttribute(hConsole, 12);
+					std::cout << "Game not found. Deactivating.." << std::endl;
+				}
 			}
 		}
 
