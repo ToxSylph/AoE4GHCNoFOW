@@ -22,6 +22,7 @@ bool patched = false;
 int toggleKey = 0x50; // P Key
 int exitKey = VK_END; // End Key
 bool customKeys = false;
+bool checkInGameReq = false;
 
 uintptr_t fowAddr = NULL;
 uintptr_t mpBoolAddr = NULL;
@@ -134,6 +135,8 @@ bool loadAddresses()
 	unsigned int isingameo2 = hexToUint(j["isingameo2"]);
 	int cToggleKey = hexToUint(j["togglekey"]);
 	int cExitKey = hexToUint(j["exitkey"]);
+	checkInGameReq = j["checkingamerequired"];
+
 
 	if (cToggleKey != 0)
 		toggleKey = cToggleKey;
@@ -148,13 +151,13 @@ bool loadAddresses()
 	isInGameAddr = ResolveAddrEx(hProcess, moduleBase + isingamebase, { isingameo1, isingameo2 });
 
 	SetConsoleTextAttribute(hConsole, 15);
-	std::cout << "MpBool Address: " << std::hex << mpBoolAddr << std::endl;
-	std::cout << "FoW Toggle Address: " << std::hex << fowAddr << std::endl;
+	//std::cout << "MpBool Address: " << std::hex << mpBoolAddr << std::endl;
+	//std::cout << "FoW Toggle Address: " << std::hex << fowAddr << std::endl;
 
 	char org[] = "\x90\x90";
 	HPX(hProcess, (PBYTE)patchAddr, (PBYTE)org, 2);
 	patched = true;
-	std::cout << "Patch address: " << std::hex << patchAddr << std::endl;
+	//std::cout << "Patch address: " << std::hex << patchAddr << std::endl;
 
 	if (mpBoolAddr == NULL || fowAddr == NULL)
 	{
@@ -171,6 +174,7 @@ bool loadAddresses()
 
 bool isInGame()
 {
+	if (!checkInGameReq) return true;
 	int inGameValue = 0;
 	ReadProcessMemory(hProcess, (int*)isInGameAddr, &inGameValue, sizeof(inGameValue), NULL);
 	return inGameValue == 1;
@@ -201,9 +205,9 @@ bool toggleOn()
 	return true;
 }
 
-bool toggleOff()
+bool toggleOff(bool forced = false)
 {
-	if (!checkInGame()) return false;
+	if (!forced && !checkInGame()) return false;
 	active = false;
 	ReadProcessMemory(hProcess, (int*)fowAddr, &fowVal, sizeof(fowVal), NULL);
 	ReadProcessMemory(hProcess, (int*)mpBoolAddr, &fowMode, sizeof(fowMode), NULL);
@@ -251,7 +255,7 @@ void input()
 				std::cout << "OFF." << std::endl;
 			}
 		}
-		if (active)
+		if (active && checkInGameReq)
 		{
 			tickCounter++;
 			if (tickCounter > 100)
@@ -260,6 +264,7 @@ void input()
 				if (!isInGame())
 				{
 					active = false;
+					toggleOff(true);
 					SetConsoleTextAttribute(hConsole, 12);
 					std::cout << "Game not found. Deactivating.." << std::endl;
 				}
