@@ -1,15 +1,15 @@
 {
-    "gameversion": "10.1.48",
-    "patchaddress": "0x29EDA05",
-    "fowaddr": "0x7B82C28",
-    "mpboolbase": "0x84EE578",
+    "gameversion": "11.0.782",
+    "patchaddress": "0x29E8E75",
+    "fowaddr": "0x7BA3328",
+    "mpboolbase": "0x850ECC8",
     "mpboolo1": "0x0",
     "mpboolo2": "0x2718",
-    "mpboolo3": "0x2c8",
-    "isingamebase": "0x7B829F0",
+    "mpboolo3": "0x2C8",
+    "isingamebase": "0x7BA30F0",
     "isingameo1": "0x318",
     "isingameo2": "0x210",
-    "checkingamerequired": false,
+    "checkingamerequired": true,
     "togglekey": "0x0",
     "exitkey": "0x0"
 }
